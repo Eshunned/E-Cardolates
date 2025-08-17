@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 
-const STAR_DENSITY_DIVISOR = 4200;
-const STAR_CAP = 9000;
-const GRAVITY_STRENGTH_NUM = 700;
+const STAR_DENSITY_DIVISOR = 1000;
+const STAR_CAP = 90000;
+const GRAVITY_STRENGTH_NUM = 15;
 const GRAVITY_STRENGTH_CAP = 0.2;
 const DAMPING = 0.985;
 
