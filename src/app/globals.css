@@ -1,0 +1,5 @@
+/* src/app/globals.css */
+* { box-sizing: border-box; }
+html, body, #__next { height: 100%; }
+body { margin: 0; background:#070b12; color:#fff; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+button { font: inherit; }
