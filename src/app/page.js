@@ -23,6 +23,7 @@ export default function Page({
   const captureRef = useRef(null);
   const cardRef = useRef(null);
 
+  // read URL params once
   useEffect(() => {
     if (initialTo || initialFrom || initialMessage) return;
     const p = new URLSearchParams(window.location.search);
@@ -31,6 +32,7 @@ export default function Page({
     p.get("msg") && setMessage(p.get("msg"));
   }, [initialTo, initialFrom, initialMessage]);
 
+  // update share URL when fields change
   useEffect(() => {
     const url = new URL(window.location.href);
     url.searchParams.set("to", to);
@@ -39,28 +41,79 @@ export default function Page({
     setShareUrl(url.toString());
   }, [to, from, message]);
 
+  // preload images once (helps export)
+  useEffect(() => {
+    ["/malhar/Cloud.png", "/malhar/Ring-2.png", "/malhar/Ring-3.png", "/malhar/Ring-4.png", "/malhar/logo-core.png"]
+      .forEach((src) => { const i = new Image(); i.crossOrigin = "anonymous"; i.src = src; });
+  }, []);
+
   async function handleDownloadPng() {
     try {
       const { toPng } = await import("html-to-image");
-      if (!captureRef.current) return;
-      const clone = captureRef.current.cloneNode(true);
-      clone.style.transform = "scaleX(-1)";
-      clone.style.position = "fixed";
-      clone.style.top = "-10000px";
-      clone.style.left = "0";
-      document.body.appendChild(clone);
-      const dataUrl = await toPng(clone, {
-        cacheBust: true,
-        pixelRatio: 2,
-        backgroundColor: "#070b12",
+      const src = captureRef.current;
+      if (!src) return;
+
+      // Build an export-only clone (no 3D flip; no blend modes)
+      const node = src.cloneNode(true);
+      const rect = src.getBoundingClientRect();
+
+      Object.assign(node.style, {
+        position: "fixed",
+        left: "0px",
+        top: "-10000px", // off-screen (but visible so library captures it)
+        width: `${Math.round(rect.width)}px`,
+        height: `${Math.round(rect.height)}px`,
+        transform: "scaleX(-1)",   // mirror only the clone
+        pointerEvents: "none",
+        zIndex: "-1",
       });
-      document.body.removeChild(clone);
+
+      // neutralize 3D transforms and transitions
+      const clonedCard = node.querySelector(".card");
+      if (clonedCard) {
+        clonedCard.style.transform = "none";
+        clonedCard.style.transition = "none";
+      }
+
+      // turn off blend modes that html-to-image can't paint
+      node.querySelectorAll(".wash, .nebula").forEach((el) => {
+        el.style.mixBlendMode = "normal";
+        // keep them bright enough after removing "screen"
+        if (!el.classList.contains("dim")) el.style.opacity = "0.85";
+      });
+
+      // ensure all <img> in the clone are fully loaded
+      const imgs = Array.from(node.querySelectorAll("img"));
+      await Promise.all(
+        imgs.map(
+          (img) =>
+            new Promise((res) => {
+              img.crossOrigin = "anonymous";
+              if (img.complete) return res();
+              img.onload = img.onerror = () => res();
+            })
+        )
+      );
+
+      document.body.appendChild(node);
+
+      const dataUrl = await toPng(node, {
+        cacheBust: true,
+        backgroundColor: "#070b12",
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
+        pixelRatio: 2,
+      });
+
+      document.body.removeChild(node);
+
       const a = document.createElement("a");
       a.download = "malhar-e-card.png";
       a.href = dataUrl;
       a.click();
-    } catch {
-      alert("Run once: npm i html-to-image");
+    } catch (e) {
+      console.error(e);
+      alert("Run once in your project:  npm i html-to-image");
     }
   }
 
@@ -138,12 +191,8 @@ export default function Page({
             <button className="btn" onClick={() => navigator.clipboard.writeText(shareUrl)}>
               Copy share link
             </button>
-            {!readOnly && !existingId && (
-              <button className="btn" onClick={saveCard}>Save to cloud</button>
-            )}
-            {!readOnly && existingId && (
-              <button className="btn" onClick={updateCard}>Update card</button>
-            )}
+            {!readOnly && !existingId && <button className="btn" onClick={saveCard}>Save to cloud</button>}
+            {!readOnly && existingId && <button className="btn" onClick={updateCard}>Update card</button>}
           </div>
         </section>
 
@@ -201,18 +250,19 @@ export default function Page({
   );
 }
 
+/* ---------- Front Cover ---------- */
 function FrontCover() {
   return (
     <div className="cover">
       <div className="frame" />
       <div className="clipBlock">
-        <img src="/malhar/Cloud.png" alt="cloud" className="wash" />
+        <img src="/malhar/Cloud.png" crossOrigin="anonymous" alt="cloud" className="wash" />
         <div className="center">
           <div className="stack">
-            <img src="/malhar/Ring-2.png" className="ring ringBoost" alt="ring2" />
-            <img src="/malhar/Ring-3.png" className="ring ringBoost" alt="ring3" />
-            <img src="/malhar/Ring-4.png" className="ring ringBoost" alt="ring4" />
-            <img src="/malhar/logo-core.png" className="core smallCore" alt="logo" />
+            <img src="/malhar/Ring-2.png" crossOrigin="anonymous" className="ring ringBoost" alt="ring2" />
+            <img src="/malhar/Ring-3.png" crossOrigin="anonymous" className="ring ringBoost" alt="ring3" />
+            <img src="/malhar/Ring-4.png" crossOrigin="anonymous" className="ring ringBoost" alt="ring4" />
+            <img src="/malhar/logo-core.png" crossOrigin="anonymous" className="core smallCore" alt="logo" />
           </div>
         </div>
       </div>
@@ -235,23 +285,24 @@ function FrontCover() {
   );
 }
 
+/* ---------- Inside ---------- */
 function InsideMessage({ to, from, message }) {
   return (
     <div className="inside">
       <div className="columns">
         <div className="col">
           <div className="innerClip">
-            <img src="/malhar/Cloud.png" alt="nebula" className="nebula" />
+            <img src="/malhar/Cloud.png" crossOrigin="anonymous" alt="nebula" className="nebula" />
             <div className="stack">
-              <img src="/malhar/Ring-3.png" className="ring" alt="ring" />
-              <img src="/malhar/logo-core.png" className="core coreSm" alt="logo" />
+              <img src="/malhar/Ring-3.png" crossOrigin="anonymous" className="ring" alt="ring" />
+              <img src="/malhar/logo-core.png" crossOrigin="anonymous" className="core coreSm" alt="logo" />
             </div>
           </div>
         </div>
 
         <div className="col rightSide">
           <div className="innerClip">
-            <img src="/malhar/Cloud.png" alt="nebula" className="nebula dim" />
+            <img src="/malhar/Cloud.png" crossOrigin="anonymous" alt="nebula" className="nebula dim" />
             <div className="to">To: <b>{to || "—"}</b></div>
             <div className="msg">{message || ""}</div>
             <div className="from">— {from || "—"}</div>
@@ -279,10 +330,10 @@ function InsideMessage({ to, from, message }) {
   );
 }
 
+/* ---------- Starfield ---------- */
 function Starfield() {
   const canvasRef = useRef(null);
   const mouse = useRef({ x: 0, y: 0, active: false });
-  const running = useRef(true);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -291,46 +342,38 @@ function Starfield() {
     if (!ctx) return;
 
     let w = 0, h = 0, raf = 0;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const resize = () => {
-      w = Math.floor(window.innerWidth);
-      h = Math.floor(window.innerHeight);
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      canvas.style.width = w + "px";
-      canvas.style.height = h + "px";
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      initStars();
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
     };
-
-    let stars = [];
-    const initStars = () => {
-      const mobileScale = w < 640 ? 0.6 : 1;
-      const count = Math.min(
-        STAR_CAP,
-        Math.floor((w * h) / STAR_DENSITY_DIVISOR * mobileScale)
-      );
-      stars = Array.from({ length: count }).map(() => ({
-        x: Math.random() * w,
-        y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 0.05,
-        vy: (Math.random() - 0.5) * 0.05,
-        r: Math.random() * 0.8 + 0.15,
-        t: Math.random() * Math.PI * 2,
-        ts: 0.02 + Math.random() * 0.03,
-      }));
-    };
-
     resize();
     window.addEventListener("resize", resize);
 
+    const count = Math.min(STAR_CAP, Math.floor((w * h) / STAR_DENSITY_DIVISOR));
+    const stars = Array.from({ length: count }).map(() => ({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      vx: (Math.random() - 0.5) * 0.05,
+      vy: (Math.random() - 0.5) * 0.05,
+      r: Math.random() * 0.8 + 0.15,
+      t: Math.random() * Math.PI * 2,
+      ts: 0.02 + Math.random() * 0.03,
+    }));
+
+    const drawStar = (s) => {
+      const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, Math.max(1.2, s.r * 6));
+      glow.addColorStop(0, "rgba(255,223,128,0.95)");
+      glow.addColorStop(0.4, "rgba(243,197,82,0.55)");
+      glow.addColorStop(1, "rgba(243,197,82,0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      const radius = Math.max(0.6, s.r * (1 + 0.7 * Math.sin(s.t)));
+      ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    };
+
     const step = () => {
-      if (!running.current || reduceMotion.matches) {
-        raf = requestAnimationFrame(step);
-        return;
-      }
       ctx.clearRect(0, 0, w, h);
       ctx.globalCompositeOperation = "lighter";
       for (const s of stars) {
@@ -352,40 +395,25 @@ function Starfield() {
         if (s.y < -10) s.y = h + 10;
         if (s.y > h + 10) s.y = -10;
 
-        const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, Math.max(1.2, s.r * 6));
-        glow.addColorStop(0, "rgba(255,223,128,0.95)");
-        glow.addColorStop(0.4, "rgba(243,197,82,0.55)");
-        glow.addColorStop(1, "rgba(243,197,82,0)");
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        const radius = Math.max(0.6, s.r * (1 + 0.7 * Math.sin(s.t)));
-        ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
-        ctx.fill();
+        drawStar(s);
       }
       ctx.globalCompositeOperation = "source-over";
       raf = requestAnimationFrame(step);
     };
+
     raf = requestAnimationFrame(step);
 
-    const onPointerMove = (e) => {
-      const rect = canvas.getBoundingClientRect();
-      mouse.current.x = e.clientX - rect.left;
-      mouse.current.y = e.clientY - rect.top;
-      mouse.current.active = true;
-    };
-    const onPointerLeave = () => { mouse.current.active = false; };
-    const onVisibility = () => { running.current = !document.hidden; };
+    const onMove = (e) => { mouse.current.x = e.clientX; mouse.current.y = e.clientY; mouse.current.active = true; };
+    const onLeave = () => { mouse.current.active = false; };
 
-    window.addEventListener("pointermove", onPointerMove, { passive: true });
-    window.addEventListener("pointerleave", onPointerLeave, { passive: true });
-    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseleave", onLeave);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerleave", onPointerLeave);
-      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseleave", onLeave);
     };
   }, []);
 
