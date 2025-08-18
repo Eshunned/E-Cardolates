@@ -11,9 +11,9 @@ export default async function CardViewer({ params }) {
       initialTo={card.to}
       initialFrom={card.from}
       initialMessage={card.message}
-      readOnly={true}
+      readOnly
       existingId={card.id}
-      onlyCard={true}
+      onlyCard
     />
   );
 }
