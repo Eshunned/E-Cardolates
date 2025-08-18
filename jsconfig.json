@@ -1,8 +1,6 @@
 {
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build"
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
   }
 }
