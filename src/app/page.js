@@ -282,6 +282,7 @@ function InsideMessage({ to, from, message }) {
 function Starfield() {
   const canvasRef = useRef(null);
   const mouse = useRef({ x: 0, y: 0, active: false });
+  const running = useRef(true);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -290,45 +291,53 @@ function Starfield() {
     if (!ctx) return;
 
     let w = 0, h = 0, raf = 0;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     const resize = () => {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
+      w = Math.floor(window.innerWidth);
+      h = Math.floor(window.innerHeight);
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + "px";
+      canvas.style.height = h + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      initStars();
     };
+
+    let stars = [];
+    const initStars = () => {
+      const mobileScale = w < 640 ? 0.6 : 1;
+      const count = Math.min(
+        STAR_CAP,
+        Math.floor((w * h) / STAR_DENSITY_DIVISOR * mobileScale)
+      );
+      stars = Array.from({ length: count }).map(() => ({
+        x: Math.random() * w,
+        y: Math.random() * h,
+        vx: (Math.random() - 0.5) * 0.05,
+        vy: (Math.random() - 0.5) * 0.05,
+        r: Math.random() * 0.8 + 0.15,
+        t: Math.random() * Math.PI * 2,
+        ts: 0.02 + Math.random() * 0.03,
+      }));
+    };
+
     resize();
     window.addEventListener("resize", resize);
 
-    const count = Math.min(STAR_CAP, Math.floor((w * h) / STAR_DENSITY_DIVISOR));
-    const stars = Array.from({ length: count }).map(() => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      vx: (Math.random() - 0.5) * 0.05,
-      vy: (Math.random() - 0.5) * 0.05,
-      r: Math.random() * 0.8 + 0.15,
-      t: Math.random() * Math.PI * 2,
-      ts: 0.02 + Math.random() * 0.03,
-    }));
-
-    const drawStar = (s) => {
-      const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, Math.max(1.2, s.r * 6));
-      glow.addColorStop(0, "rgba(255,223,128,0.95)");
-      glow.addColorStop(0.4, "rgba(243,197,82,0.55)");
-      glow.addColorStop(1, "rgba(243,197,82,0)");
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      const radius = Math.max(0.6, s.r * (1 + 0.7 * Math.sin(s.t)));
-      ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
-      ctx.fill();
-    };
-
     const step = () => {
+      if (!running.current || reduceMotion.matches) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
       ctx.clearRect(0, 0, w, h);
       ctx.globalCompositeOperation = "lighter";
       for (const s of stars) {
         if (mouse.current.active) {
           const dx = mouse.current.x - s.x;
           const dy = mouse.current.y - s.y;
-          const d2 = dx*dx + dy*dy + 0.01;
+          const d2 = dx * dx + dy * dy + 0.01;
           const f = Math.min(GRAVITY_STRENGTH_CAP, GRAVITY_STRENGTH_NUM / d2);
           const inv = 1 / Math.sqrt(d2);
           s.vx += f * dx * inv;
@@ -343,25 +352,40 @@ function Starfield() {
         if (s.y < -10) s.y = h + 10;
         if (s.y > h + 10) s.y = -10;
 
-        drawStar(s);
+        const glow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, Math.max(1.2, s.r * 6));
+        glow.addColorStop(0, "rgba(255,223,128,0.95)");
+        glow.addColorStop(0.4, "rgba(243,197,82,0.55)");
+        glow.addColorStop(1, "rgba(243,197,82,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        const radius = Math.max(0.6, s.r * (1 + 0.7 * Math.sin(s.t)));
+        ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
+        ctx.fill();
       }
       ctx.globalCompositeOperation = "source-over";
       raf = requestAnimationFrame(step);
     };
-
     raf = requestAnimationFrame(step);
 
-    const onMove = (e) => { mouse.current.x = e.clientX; mouse.current.y = e.clientY; mouse.current.active = true; };
-    const onLeave = () => { mouse.current.active = false; };
+    const onPointerMove = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.current.x = e.clientX - rect.left;
+      mouse.current.y = e.clientY - rect.top;
+      mouse.current.active = true;
+    };
+    const onPointerLeave = () => { mouse.current.active = false; };
+    const onVisibility = () => { running.current = !document.hidden; };
 
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseleave", onLeave);
+    window.addEventListener("pointermove", onPointerMove, { passive: true });
+    window.addEventListener("pointerleave", onPointerLeave, { passive: true });
+    document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseleave", onLeave);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerleave", onPointerLeave);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 
