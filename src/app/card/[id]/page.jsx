@@ -1,19 +1,19 @@
-import { prisma } from "@/lib/prisma";
-import Page from "@/app/page"; // reuse your client component with props
+import prisma from "@/lib/prisma";
+import Cardolate from "@/components/Cardolate";
+import { notFound } from "next/navigation";
 
-export const revalidate = 0;
-
-export default async function CardById({ params }) {
+export default async function CardViewer({ params }) {
   const card = await prisma.card.findUnique({ where: { id: params.id } });
-  if (!card) return <main style={{ color: "#fff", padding: 24 }}>Not found</main>;
+  if (!card) return notFound();
 
   return (
-    <Page
+    <Cardolate
       initialTo={card.to}
       initialFrom={card.from}
       initialMessage={card.message}
-      readOnly={false}  // set true if you want a non-editable view
+      readOnly={true}
       existingId={card.id}
+      onlyCard={true}
     />
   );
 }

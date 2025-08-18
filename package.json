@@ -4,11 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "prebuild": "prisma generate",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.14.0",
@@ -17,8 +15,5 @@
     "prisma": "^6.14.0",
     "react": "19.1.0",
     "react-dom": "19.1.0"
-  },
-  "engines": {
-    "node": ">=18.18.0"
   }
 }

@@ -7,8 +7,8 @@ datasource db {
 }
 model Card {
   id        String   @id @default(cuid())
-  to        String   @db.VarChar(200)
-  from      String   @db.VarChar(200)
+  to        String
+  from      String
   message   String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,22 +1,29 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import prisma from "@/lib/prisma";
 
 export async function GET(_req, { params }) {
-  const card = await prisma.card.findUnique({ where: { id: params.id } });
-  if (!card) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(card);
+  try {
+    const card = await prisma.card.findUnique({ where: { id: params.id } });
+    if (!card) return NextResponse.json({ error: "not-found" }, { status: 404 });
+    return NextResponse.json(card);
+  } catch {
+    return NextResponse.json({ error: "failed" }, { status: 500 });
+  }
 }
 
 export async function PATCH(req, { params }) {
-  const { to, from, message } = await req.json();
-  const card = await prisma.card.update({
-    where: { id: params.id },
-    data: { to, from, message },
-  });
-  return NextResponse.json(card);
-}
-
-export async function DELETE(_req, { params }) {
-  await prisma.card.delete({ where: { id: params.id } });
-  return NextResponse.json({ ok: true });
+  try {
+    const body = await req.json();
+    const card = await prisma.card.update({
+      where: { id: params.id },
+      data: {
+        to: body.to ?? undefined,
+        from: body.from ?? undefined,
+        message: body.message ?? undefined
+      }
+    });
+    return NextResponse.json(card);
+  } catch {
+    return NextResponse.json({ error: "failed" }, { status: 500 });
+  }
 }

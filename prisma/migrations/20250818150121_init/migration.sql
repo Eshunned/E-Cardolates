@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "public"."Card" ALTER COLUMN "to" SET DATA TYPE TEXT,
+ALTER COLUMN "from" SET DATA TYPE TEXT;
