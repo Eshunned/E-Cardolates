@@ -1,4 +1,4 @@
-import { prisma } from "../../lib/prisma";
+import { prisma } from "@/lib/prisma";
 import Page from "@/app/page"; // reuse your client component with props
 
 export const revalidate = 0;
