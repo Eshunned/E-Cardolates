@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import CardolateStyles from "@/components/CardolateStyles";
+import LZString from "lz-string";
 
 /* ---------- Star Background Variables ---------- */
 const STAR_DENSITY = 1200;          
@@ -58,6 +59,16 @@ export default function CardolateMain({
     a.href = dataUrl;
     a.click();
   };
+
+  async function saveStatically() {
+  // Compress and encode message safely for URL
+  const compressedMsg = LZString.compressToEncodedURIComponent(message);
+
+  const url = `${window.location.origin}/share/${encodeURIComponent(to)}/${encodeURIComponent(from)}/${compressedMsg}`;
+
+  await navigator.clipboard.writeText(url);
+  alert("Share link copied:\n" + url);
+}
 
   async function handleDownloadPng() {
     try {
@@ -176,6 +187,9 @@ export default function CardolateMain({
               <button className="btn" onClick={handleDownloadPng}>Download PNG</button>
               {!readOnly && !existingId && (
                 <button className="btn" onClick={saveCardAndCopyLink}>Get share link</button>
+              )}
+              {!readOnly && !existingId && (
+                <button className="btn" onClick={saveStatically}>Get Static Share link</button>
               )}
               {!readOnly && existingId && (
                 <button className="btn" onClick={updateCard}>Update card</button>
