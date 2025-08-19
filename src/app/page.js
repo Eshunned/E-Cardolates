@@ -1,4 +1,3 @@
-// app/card/page.jsx
 import CardolateStyles from "@/components/CardolateStyles";
 import Cardolate from "@/components/Cardolate";
 
